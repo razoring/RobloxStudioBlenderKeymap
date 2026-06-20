@@ -3,6 +3,10 @@
 - Enables Select-Box by default and switches to Tweak when selection is made.
 - Swaps Scale-Cage as default scale method.
 - Remaps F to center selection.
+- No additional imports needed.
+
+## Installation:
+Drag-and-Drop the script into ```~\AppData\Roaming\Blender Foundation\Blender\[version]\scripts\addons``` or click "Install from Disk..." under the chevron in Preferences. 
 
 ## Keybinds:
 ### Navigation:
