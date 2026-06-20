@@ -9,6 +9,10 @@ bl_info = {
 }
 
 import bpy
+import urllib.request
+import threading
+import os
+import re
 from mathutils import Vector, Quaternion
 from bpy.app.handlers import persistent
 
@@ -293,6 +297,23 @@ class VIEW3D_PT_roblox_nav_panel(bpy.types.Panel):
             layout.operator("view3d.roblox_nav_start", text="Enable Navigation", icon='PLAY')
             layout.label(text="Status: OFF", icon='PAUSE')
 
+def _check_update(): # check for updates
+    try:
+        url = "https://raw.githubusercontent.com/razoring/RobloxStudioBlenderKeymap/main/BlenderRobloxKeymap.py"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                patch = response.read().decode('utf-8')
+                match = re.search(r'"version"\s*:\s*\((\d+),\s*(\d+),\s*(\d+)\)', patch)
+                if match:
+                    remote_ver = tuple(map(int, match.groups()))
+                    local_ver = bl_info.get("version", (0, 0, 0))
+                    if remote_ver > local_ver:
+                        with open(os.path.realpath(__file__), 'w', encoding='utf-8') as f:
+                            f.write(patch)
+    except Exception:
+        pass
+
 def auto_start_nav():
     if not getattr(bpy.context.window_manager, "roblox_nav_running", False):
         bpy.ops.view3d.roblox_nav_start()
@@ -303,6 +324,7 @@ def load_handler(dummy):
     bpy.app.timers.register(auto_start_nav, first_interval=1.5)
 
 def register():
+    threading.Thread(target=_check_update, daemon=True).start()
     bpy.utils.register_class(VIEW3D_OT_roblox_nav_modal)
     bpy.utils.register_class(VIEW3D_OT_roblox_nav_start)
     bpy.utils.register_class(VIEW3D_OT_roblox_nav_stop)
