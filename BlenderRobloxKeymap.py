@@ -20,6 +20,8 @@ class VIEW3D_OT_roblox_nav_modal(bpy.types.Operator):
     _keys = None
     _toolSet = False
     _hasMoved = False
+    _wasSelected = False
+    _prevSelectTool = "builtin.select_box"
     
     @classmethod
     def poll(cls, context):
@@ -35,6 +37,9 @@ class VIEW3D_OT_roblox_nav_modal(bpy.types.Operator):
         }
         self._toolSet = False
         self._hasMoved = False
+        self._wasSelected = len(context.selected_objects) > 0
+        self._prevSelectTool = "builtin.select_box"
+        self._scaleFixed = False
         self._mouseX = getattr(event, "mouse_x", 0)
         self._mouseY = getattr(event, "mouse_y", 0)
         
@@ -98,14 +103,56 @@ class VIEW3D_OT_roblox_nav_modal(bpy.types.Operator):
             #extract the correct window region for context overrides
             windowRegion = next((r for r in hoveredArea.regions if r.type == 'WINDOW'), None)
             
+            #enforce scale cage as the default scale tool on load
+            if not self._scaleFixed and windowRegion:
+                with context.temp_override(window=context.window, area=hoveredArea, region=windowRegion):
+                    try:
+                        bpy.ops.wm.tool_set_by_id(name="builtin.scale_cage")
+                        self._scaleFixed = True
+                    except Exception:
+                        pass
+                return {'PASS_THROUGH'}
+
             #enforce box select as the active tool (left click drag = select)
             if not self._toolSet and windowRegion:
                 with context.temp_override(window=context.window, area=hoveredArea, region=windowRegion):
                     try:
-                        bpy.ops.wm.tool_set_by_id(name="builtin.select_box")
+                        if self._wasSelected:
+                            bpy.ops.wm.tool_set_by_id(name="builtin.select")
+                        else:
+                            bpy.ops.wm.tool_set_by_id(name="builtin.select_box")
                         self._toolSet = True
                     except Exception:
                         pass
+                        
+            #dynamic selection tool swapping
+            if windowRegion and event.type in {'TIMER', 'MOUSEMOVE'}:
+                try:
+                    currentTool = context.workspace.tools.from_space_view3d_mode(context.mode).idname
+                except AttributeError:
+                    currentTool = ""
+
+                hasSelection = len(context.selected_objects) > 0
+                
+                if hasSelection and not self._wasSelected:
+                    if currentTool in {'builtin.select_box', 'builtin.select_circle', 'builtin.select_lasso'}:
+                        self._prevSelectTool = currentTool
+                    with context.temp_override(window=context.window, area=hoveredArea, region=windowRegion):
+                        try:
+                            bpy.ops.wm.tool_set_by_id(name="builtin.select")
+                        except Exception:
+                            pass
+                    self._wasSelected = True
+                elif not hasSelection and self._wasSelected:
+                    with context.temp_override(window=context.window, area=hoveredArea, region=windowRegion):
+                        try:
+                            bpy.ops.wm.tool_set_by_id(name=self._prevSelectTool)
+                        except Exception:
+                            pass
+                    self._wasSelected = False
+                elif not hasSelection:
+                    if currentTool in {'builtin.select_box', 'builtin.select_circle', 'builtin.select_lasso'}:
+                        self._prevSelectTool = currentTool
             
             #press tracking
             if event.value == 'PRESS':
