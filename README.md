@@ -22,3 +22,8 @@ Drag-and-Drop the script into ```~\AppData\Roaming\Blender Foundation\Blender\[v
 ### Miscellaneous:
 - F: Center selection
 - Left-Mouse Button: Selection-Box / Tweak
+
+## Maybe Coming Soon:
+- An interface to toggle features
+- Keybind remapping
+- Unionizing logic like Studio
